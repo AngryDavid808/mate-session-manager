@@ -29,6 +29,8 @@
 #include <glib-object.h>
 #include <glib/gi18n.h>
 
+#include <gio/gio.h>
+
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
@@ -38,6 +40,8 @@
 
 #include "gsm-marshal.h"
 #include "gsm-systemd.h"
+
+static gboolean play_shutdown_sound(const char *file_path, GError **error);
 
 #define SD_NAME              "org.freedesktop.login1"
 #define SD_PATH              "/org/freedesktop/login1"
@@ -508,69 +512,160 @@ void
 gsm_systemd_attempt_restart (GsmSystemd *manager)
 {
     gboolean res;
-    GError  *error;
+    GError *error = NULL;
     GsmSystemdPrivate *priv;
 
-    error = NULL;
-    priv = gsm_systemd_get_instance_private (manager);
+    priv = gsm_systemd_get_instance_private(manager);
 
-    if (!gsm_systemd_ensure_sd_connection (manager, &error)) {
-        g_warning ("Could not connect to Systemd: %s",
-                   error->message);
-        emit_restart_complete (manager, error);
-        g_error_free (error);
+    if (!gsm_systemd_ensure_sd_connection(manager, &error)) {
+        g_warning("Could not connect to systemd: %s", error->message);
+        emit_restart_complete(manager, error);
+        g_error_free(error);
         return;
     }
 
-    res = dbus_g_proxy_call_with_timeout (priv->sd_proxy,
-                                          "Reboot",
-                                          INT_MAX,
-                                          &error,
-                                          G_TYPE_BOOLEAN, TRUE, /* interactive */
-                                          G_TYPE_INVALID,
-                                          G_TYPE_INVALID);
+    /* Play shutdown sound and wait for it to complete */
+    play_shutdown_sound("/usr/share/sounds/mate-logout.wav", &error);
+
+    /* Give audio driver time to finish processing */
+    g_usleep(500000);
+
+    /* Call systemd reboot */
+    res = dbus_g_proxy_call_with_timeout(priv->sd_proxy,
+                                         "Reboot",
+                                         INT_MAX,
+                                         &error,
+                                         G_TYPE_BOOLEAN, TRUE, /* interactive */
+                                         G_TYPE_INVALID,
+                                         G_TYPE_INVALID);
 
     if (!res) {
-        g_warning ("Unable to restart system: %s", error->message);
-        emit_restart_complete (manager, error);
-        g_error_free (error);
+        g_warning("Unable to restart system: %s", error->message);
+        emit_restart_complete(manager, error);
+        g_error_free(error);
     } else {
-        emit_restart_complete (manager, NULL);
+        emit_restart_complete(manager, NULL);
     }
+}
+
+static gboolean
+play_shutdown_sound(const char *file_path, GError **error)
+{
+    gboolean ok = FALSE;
+    GError *local_error = NULL;
+
+    /* Try aplay first (ALSA player - preferred as requested) */
+    gchar *argv_aplay[] = { "aplay", (gchar *)file_path, NULL };
+    ok = g_spawn_sync (
+        NULL,
+        argv_aplay,
+        NULL,
+        G_SPAWN_SEARCH_PATH,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        NULL,
+        &local_error
+    );
+
+    if (!ok) {
+        if (local_error != NULL) {
+            g_warning("Error playing shutdown sound with aplay: %s", local_error->message);
+            g_error_free(local_error);
+            local_error = NULL;
+        }
+
+        /* Fallback to canberra-gtk-play (desktop sound) */
+        gchar *argv_canberra[] = { "canberra-gtk-play", "-f", (gchar *)file_path, NULL };
+        ok = g_spawn_sync (
+            NULL,
+            argv_canberra,
+            NULL,
+            G_SPAWN_SEARCH_PATH,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            NULL,
+            &local_error
+        );
+
+        if (!ok && local_error != NULL) {
+            g_warning("Error playing shutdown sound with canberra-gtk-play: %s", local_error->message);
+            g_error_free(local_error);
+            local_error = NULL;
+
+            /* Final fallback to paplay (PulseAudio) */
+            gchar *argv_paplay[] = { "paplay", (gchar *)file_path, NULL };
+            ok = g_spawn_sync (
+                NULL,
+                argv_paplay,
+                NULL,
+                G_SPAWN_SEARCH_PATH,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                NULL,
+                &local_error
+            );
+
+            if (!ok && local_error != NULL) {
+                g_warning("Error playing shutdown sound with paplay: %s", local_error->message);
+                if (error) {
+                    *error = local_error;
+                } else {
+                    g_error_free(local_error);
+                }
+                return FALSE;
+            }
+        }
+    }
+
+    /* Add a small delay to ensure audio buffer flushes */
+    g_usleep(200000);
+
+    return ok;
 }
 
 void
 gsm_systemd_attempt_stop (GsmSystemd *manager)
 {
     gboolean res;
-    GError  *error;
+    GError *error = NULL;
     GsmSystemdPrivate *priv;
 
-    error = NULL;
-    priv = gsm_systemd_get_instance_private (manager);
+    priv = gsm_systemd_get_instance_private(manager);
 
-    if (!gsm_systemd_ensure_sd_connection (manager, &error)) {
-        g_warning ("Could not connect to Systemd: %s",
-                   error->message);
-        emit_stop_complete (manager, error);
-        g_error_free (error);
+    if (!gsm_systemd_ensure_sd_connection(manager, &error)) {
+        g_warning("Could not connect to systemd: %s", error->message);
+        emit_stop_complete(manager, error);
+        g_error_free(error);
         return;
     }
 
-    res = dbus_g_proxy_call_with_timeout (priv->sd_proxy,
-                                          "PowerOff",
-                                          INT_MAX,
-                                          &error,
-                                          G_TYPE_BOOLEAN, TRUE, /* interactive */
-                                          G_TYPE_INVALID,
-                                          G_TYPE_INVALID);
+    /* Play shutdown sound */
+    play_shutdown_sound("/usr/share/sounds/mate-logout.wav", &error);
+
+    /* Give audio driver time to finish processing (match restart) */
+    g_usleep(500000);
+
+    /* Call systemd power off */
+    res = dbus_g_proxy_call_with_timeout(priv->sd_proxy,
+                                         "PowerOff",
+                                         INT_MAX,
+                                         &error,
+                                         G_TYPE_BOOLEAN, TRUE, /* interactive */
+                                         G_TYPE_INVALID,
+                                         G_TYPE_INVALID);
 
     if (!res) {
-        g_warning ("Unable to stop system: %s", error->message);
-        emit_stop_complete (manager, error);
-        g_error_free (error);
+        g_warning("Unable to stop system: %s", error->message);
+        emit_stop_complete(manager, error);
+        g_error_free(error);
     } else {
-        emit_stop_complete (manager, NULL);
+        emit_stop_complete(manager, NULL);
     }
 }
 
