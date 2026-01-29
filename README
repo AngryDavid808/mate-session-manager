@@ -2,8 +2,7 @@ What's this fork about?
 =======================
 
 This is a fork of the session manager for MATE Session Manager, with the ability to add a wav sound (name it "mate-logout.wav") to play before rebooting or shutting down by utilizing aplay (primary) and/or paplay (backup).
-Simply place your .wav file in "/usr/share/sounds/" and the sound will play upon rebooting or shutting down before continuing the process. If none found,
-operation continues normally.
+Simply place your .wav file in "/usr/share/sounds/" and the sound will play upon rebooting or shutting down before continuing the process. If none found, operation continues normally.
 
 Known issues
 ============
@@ -40,8 +39,7 @@ dos2unix autogen.sh && dos2unix configure.ac)
 (chmod +x autogen.sh && ./autogen.sh)
 If you're getting ".in'ig.status: error: cannot find input file: `" at the end, try running (dos2unix configure.ac) then (./autogen.sh) again.
 
-6- Once it prompts you to run "make", type (make --ignore-errors) and build the project. We're skipping errors because it's mostly
-just language files that throw errors, but without this parameter, (make) will always fail with error code 2.
+6- Once it prompts you to run "make", type (make --ignore-errors) and build the project. We're skipping errors because it's mostly just language files that throw errors, but without this parameter, (make) will always fail with error code 2.
 
 7- [IMPORTANT] Backup the original mate-session files, you'll be looking for (mate-session, mate-session-inhibit, mate-session-save, mate-session-properties) in "/usr/bin/".
 Copy them somewhere safe in case installing the modified session manager bricks the DE. Alternatively, you can take a snapshot of the system for an easier and a more consistent restoral.
@@ -50,7 +48,7 @@ Copy them somewhere safe in case installing the modified session manager bricks 
 
 9- Copy and replace the newly created files from "/usr/local/bin/" to "/usr/bin/". This is why we backed up the original files.
 
-10- Restart the system for the newly installed package to take effect.
+10- Restart the system for the newly installed package to take effect, then add "mate-logout.wav" to "/usr/share/sounds/".
 
 Now every time you shut down or reboot, the system will play mate-logout.wav first, then proceed. Or just continue normally in case the file was not found in "/usr/share/sounds/".
 Should you face any issues, you can either restore the backup directly or the snapshot, whichever backup method that was chosen prior to installing the package.
