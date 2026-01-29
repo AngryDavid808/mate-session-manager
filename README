@@ -1,3 +1,18 @@
+This is a fork of the session manager for MATE Session Manager, with the ability to add a wav sound (name it "mate-logout.wav") to play before rebooting or shutting down by utilizing aplay (primary) and/or paplay (backup).
+Simply place your .wav file in "/usr/share/sounds/" and the sound will play upon rebooting or shutting down before continuing the process. If none found,
+operation continues normally.
+=============
+
+Known issues
+=============
+- There's a delay before the sound plays and after it finishes by 500ms by design (which is necessary for now to avoid cutting off
+  or continuing to reboot or shut down too early). This is due to the way that MATE handles both operations.
+- The implementation merely depends on manually placing a specific file in a specific directory due to lack of UI implementation of the feature.
+  Other file types will simply not work because the program will not find it, it has to be a .wav file.
+- You tell me! Don't forget to support the MATE team as well!
+
+=============[ORIGINAL README]=============
+
 mate-session
 =============
 
