@@ -1,15 +1,60 @@
+What's this fork about?
+=======================
+
 This is a fork of the session manager for MATE Session Manager, with the ability to add a wav sound (name it "mate-logout.wav") to play before rebooting or shutting down by utilizing aplay (primary) and/or paplay (backup).
 Simply place your .wav file in "/usr/share/sounds/" and the sound will play upon rebooting or shutting down before continuing the process. If none found,
 operation continues normally.
-=============
 
 Known issues
-=============
+============
 - There's a delay before the sound plays and after it finishes by 500ms by design (which is necessary for now to avoid cutting off
   or continuing to reboot or shut down too early). This is due to the way that MATE handles both operations.
 - The implementation merely depends on manually placing a specific file in a specific directory due to lack of UI implementation of the feature.
   Other file types will simply not work because the program will not find it, it has to be a .wav file.
 - You tell me! Don't forget to support the MATE team as well!
+
+Installation method
+====================
+
+1- Make sure the dependencies are all installed:
+(sudo apt install build-essential autoconf automake libtool pkg-config libglib2.0-dev libdbus-glib-1-dev libsystemd-dev libdbus-glib-1-dev)
+
+2- Reset all submodels, then add the one for the original mate-common repo
+(cd mate-submodules
+git reset --hard
+cd ..
+git clone https://github.com/mate-desktop/mate-common.git
+git submodule update --init --recursive
+git submodule update --remote --recursive)
+
+3- Prepare for building by copying the content of "macros" in "mate-common" to a newly created folder named "m4"
+in the same folder as "mate-common". Then, make aclocal aware of them.
+(aclocal -I mate-common/m4 -I m4
+autoconf && autoheader && automake --add-missing --copy --force-missing)
+
+4- Install dos2unix and convert both autogen.sh and configure.ac (if found)
+(sudo apt install dos2unix
+dos2unix autogen.sh && dos2unix configure.ac)
+
+5- Run autogen.sh to prepare for the "make" command
+(chmod +x autogen.sh && ./autogen.sh)
+If you're getting ".in'ig.status: error: cannot find input file: `" at the end, try running (dos2unix configure.ac) then (./autogen.sh) again.
+
+6- Once it prompts you to run "make", type (make --ignore-errors) and build the project. We're skipping errors because it's mostly
+just language files that throw errors, but without this parameter, (make) will always fail with error code 2.
+
+7- [IMPORTANT] Backup the original mate-session files, you'll be looking for (mate-session, mate-session-inhibit, mate-session-save, mate-session-properties).
+Copy them somewhere safe in case installing the modified session manager bricks the DE. Alternatively, you can take a snapshot of the system
+for an easier and a more consistent restoral.
+
+8- Install the newly built session manager by typing (sudo make install --ignore-errors). We're adding the same parameter for the same reason as before.
+
+9- Copy and replace the newly created files from "/usr/local/bin/" to "/usr/bin/". This is why we backed up the original files.
+
+10- Restart the system for the newly installed package to take effect.
+Now every time you shut down or reboot, the system will play mate-logout.wav first, then proceed. Or just continue normally in case the file was not found in "/usr/share/sounds/".
+Should you face any issues, you can either restore the backup directly or the snapshot, whichever backup method that was chosen prior to installing the package.
+
 
 =============[ORIGINAL README]=============
 
