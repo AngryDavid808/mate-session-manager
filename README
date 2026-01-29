@@ -43,15 +43,15 @@ If you're getting ".in'ig.status: error: cannot find input file: `" at the end, 
 6- Once it prompts you to run "make", type (make --ignore-errors) and build the project. We're skipping errors because it's mostly
 just language files that throw errors, but without this parameter, (make) will always fail with error code 2.
 
-7- [IMPORTANT] Backup the original mate-session files, you'll be looking for (mate-session, mate-session-inhibit, mate-session-save, mate-session-properties).
-Copy them somewhere safe in case installing the modified session manager bricks the DE. Alternatively, you can take a snapshot of the system
-for an easier and a more consistent restoral.
+7- [IMPORTANT] Backup the original mate-session files, you'll be looking for (mate-session, mate-session-inhibit, mate-session-save, mate-session-properties) in "/usr/bin/".
+Copy them somewhere safe in case installing the modified session manager bricks the DE. Alternatively, you can take a snapshot of the system for an easier and a more consistent restoral.
 
 8- Install the newly built session manager by typing (sudo make install --ignore-errors). We're adding the same parameter for the same reason as before.
 
 9- Copy and replace the newly created files from "/usr/local/bin/" to "/usr/bin/". This is why we backed up the original files.
 
 10- Restart the system for the newly installed package to take effect.
+
 Now every time you shut down or reboot, the system will play mate-logout.wav first, then proceed. Or just continue normally in case the file was not found in "/usr/share/sounds/".
 Should you face any issues, you can either restore the backup directly or the snapshot, whichever backup method that was chosen prior to installing the package.
 
